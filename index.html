@@ -1,59 +1,64 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     >
 
     <meta name="theme-color" content="#101010">
 
+    <meta
+        name="description"
+        content="GhostFrame - recreate your favorite photos with a live camera reference overlay."
+    >
+
+    <link rel="manifest" href="./manifest.json">
+
+    <link rel="apple-touch-icon" href="./icon.jpg">
+
     <title>GhostFrame</title>
 
     <style>
+
+        :root {
+            --background: #101010;
+            --surface: #202020;
+            --surface-light: #303030;
+            --text: #ffffff;
+            --muted: #aaaaaa;
+            --accent: #ffffff;
+        }
+
         * {
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             margin: 0;
-            background: #101010;
-            color: white;
+            background: var(--background);
+            color: var(--text);
             font-family: -apple-system, BlinkMacSystemFont,
                 "Segoe UI", sans-serif;
             overflow: hidden;
         }
 
-        .app {
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            background: #101010;
-        }
-
-        header h1 {
-            font-size: 20px;
-            margin: 0;
-            letter-spacing: 1px;
+        button,
+        select {
+            color: white;
+            background: var(--surface);
+            border: 1px solid #3a3a3a;
+            border-radius: 12px;
+            padding: 10px 13px;
+            font-size: 13px;
         }
 
         button {
-            border: none;
-            color: white;
-            background: #292929;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 14px;
             cursor: pointer;
         }
 
@@ -61,34 +66,80 @@
             transform: scale(0.96);
         }
 
+        button.active {
+            background: white;
+            color: black;
+        }
+
+        .app {
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            padding-top: env(safe-area-inset-top);
+        }
+
+        header {
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--background);
+        }
+
+        header h1 {
+            font-size: 19px;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
         .camera-area {
             position: relative;
             flex: 1;
             min-height: 0;
+            background: black;
             overflow: hidden;
-            background: #000;
             touch-action: none;
         }
 
         #camera {
             position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
+            background: black;
+        }
+
+        /*
+            The camera preview is mirrored for the front camera.
+            The captured image is processed separately.
+        */
+
+        #camera.mirrored {
+            transform: scaleX(-1);
+        }
+
+        #overlayLayer {
+            position: absolute;
             inset: 0;
+            overflow: hidden;
+            touch-action: none;
         }
 
         #reference {
             position: absolute;
-
             left: 50%;
             top: 50%;
 
-            max-width: 100%;
-            max-height: 100%;
-
-            width: auto;
-            height: auto;
+            width: 100%;
+            height: 100%;
 
             object-fit: contain;
 
@@ -97,126 +148,255 @@
             pointer-events: none;
             user-select: none;
 
-            transform-origin: center;
+            transform-origin: center center;
         }
 
-        .overlay-layer {
+        .guide-grid {
             position: absolute;
             inset: 0;
-            touch-action: none;
-        }
-
-        .alignment-guide {
-            position: absolute;
-            width: 70%;
-            height: 65%;
-            border: 1px dashed rgba(255,255,255,0.25);
-            border-radius: 50%;
-            left: 15%;
-            top: 17%;
             pointer-events: none;
         }
 
-        .message {
+        .guide-grid::before,
+        .guide-grid::after {
+            content: "";
             position: absolute;
-            bottom: 20px;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .guide-grid::before {
+            width: 1px;
+            height: 100%;
             left: 50%;
+        }
+
+        .guide-grid::after {
+            height: 1px;
+            width: 100%;
+            top: 50%;
+        }
+
+        .status-pill {
+            position: absolute;
+            left: 50%;
+            bottom: 18px;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.65);
-            padding: 10px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            white-space: nowrap;
+
+            background: rgba(0,0,0,0.7);
+
+            padding: 10px 15px;
+            border-radius: 30px;
+
+            font-size: 12px;
+            text-align: center;
+
+            max-width: 90%;
+            white-space: normal;
+
             pointer-events: none;
         }
 
         .countdown {
+            display: none;
             position: absolute;
             inset: 0;
-            display: none;
+
             align-items: center;
             justify-content: center;
+
             font-size: 100px;
             font-weight: bold;
-            text-shadow: 0 0 20px black;
+
+            background: rgba(0,0,0,0.15);
+
             pointer-events: none;
         }
 
         .controls {
-            padding: 16px;
-            padding-bottom: max(20px, env(safe-area-inset-bottom));
-            background: #101010;
+            background: var(--background);
+
+            padding: 12px 14px;
+            padding-bottom: max(
+                15px,
+                env(safe-area-inset-bottom)
+            );
+
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+
+            max-height: 38dvh;
+            overflow-y: auto;
         }
 
         .slider-row {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 18px;
+            gap: 10px;
         }
 
         .slider-row label {
-            font-size: 13px;
-            white-space: nowrap;
+            font-size: 12px;
+            min-width: 55px;
         }
 
-        input[type="range"] {
+        .slider-row input {
             flex: 1;
+            min-width: 0;
             accent-color: white;
         }
 
-        .timer-row {
+        .slider-row span {
+            font-size: 12px;
+            min-width: 35px;
+            text-align: right;
+        }
+
+        .control-row {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
-
-        select {
-            background: #292929;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .capture-row {
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 6px;
         }
 
-        .capture-button {
-            width: 76px;
-            height: 76px;
+        #capture {
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             background: white;
-            border: 5px solid #999;
+            border: 5px solid #888;
+            box-shadow: 0 0 0 3px white;
             padding: 0;
-            box-shadow: 0 0 0 4px white;
         }
 
-        .capture-button:active {
-            transform: scale(0.92);
-        }
-
-        .status {
-            text-align: center;
-            font-size: 12px;
-            color: #aaa;
-            margin-top: 16px;
-            min-height: 16px;
+        #capture:active {
+            transform: scale(0.93);
         }
 
         .hidden {
             display: none !important;
         }
 
-        #photoPicker {
-            display: none;
+        .small-status {
+            text-align: center;
+            color: var(--muted);
+            font-size: 11px;
+            min-height: 15px;
         }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+
+            z-index: 10;
+
+            background: rgba(0,0,0,0.9);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 18px;
+        }
+
+        .modal-content {
+            background: #1d1d1d;
+            border-radius: 18px;
+
+            width: 100%;
+            max-width: 500px;
+
+            max-height: 85dvh;
+            overflow-y: auto;
+
+            padding: 18px;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            margin: 0;
+        }
+
+        .saved-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .saved-item {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border-radius: 10px;
+            background: #333;
+        }
+
+        .saved-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .saved-item button {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+
+            padding: 5px;
+            font-size: 10px;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .comparison img {
+            width: 100%;
+            max-height: 65dvh;
+            object-fit: contain;
+            background: black;
+            border-radius: 8px;
+        }
+
+        .comparison-label {
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+
+        .modal-footer {
+            margin-top: 15px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
     </style>
+
+    <!-- Free MediaPipe Face Mesh -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
 </head>
 
 <body>
@@ -227,23 +407,24 @@
 
         <h1>GhostFrame</h1>
 
-        <div>
-            <button id="choosePhoto">
+        <div class="header-buttons">
+
+            <button id="chooseReference">
                 Reference
             </button>
 
-            <input
-                type="file"
-                id="photoPicker"
-                accept="image/*"
-            >
+            <button id="savedButton">
+                Saved
+            </button>
 
             <button id="switchCamera">
                 Flip
             </button>
+
         </div>
 
     </header>
+
 
     <main class="camera-area" id="cameraArea">
 
@@ -254,7 +435,7 @@
             playsinline
         ></video>
 
-        <div class="overlay-layer" id="overlayLayer">
+        <div id="overlayLayer">
 
             <img
                 id="reference"
@@ -264,29 +445,28 @@
 
         </div>
 
-        <div class="alignment-guide"></div>
+        <div class="guide-grid" id="guideGrid"></div>
 
         <div class="countdown" id="countdown">
             3
         </div>
 
-        <div class="message" id="message">
+        <div class="status-pill" id="alignmentStatus">
             Choose an inspiration photo
         </div>
 
     </main>
 
+
     <section class="controls">
 
         <div class="slider-row">
 
-            <label for="opacity">
-                Opacity
-            </label>
+            <label>Opacity</label>
 
             <input
-                type="range"
                 id="opacity"
+                type="range"
                 min="0"
                 max="100"
                 value="45"
@@ -298,45 +478,63 @@
 
         </div>
 
-        <div class="timer-row">
 
-            <label for="timer">
-                Timer
-            </label>
+        <div class="slider-row">
+
+            <label>Scale</label>
+
+            <input
+                id="scale"
+                type="range"
+                min="20"
+                max="300"
+                value="100"
+            >
+
+            <span id="scaleValue">
+                100%
+            </span>
+
+        </div>
+
+
+        <div class="control-row">
+
+            <button id="mirrorReference">
+                Mirror reference
+            </button>
+
+            <button id="resetOverlay">
+                Reset
+            </button>
+
+            <button id="toggleGrid">
+                Grid
+            </button>
 
             <select id="timer">
 
-                <option value="0">
-                    Off
-                </option>
+                <option value="0">Timer off</option>
 
-                <option value="3">
-                    3 seconds
-                </option>
+                <option value="3">3 seconds</option>
 
-                <option value="5">
-                    5 seconds
-                </option>
+                <option value="5">5 seconds</option>
 
-                <option value="10">
-                    10 seconds
-                </option>
+                <option value="10">10 seconds</option>
 
             </select>
 
         </div>
 
+
         <div class="capture-row">
 
-            <button
-                class="capture-button"
-                id="capture"
-                aria-label="Capture photo"
-            ></button>
+            <button id="capture" aria-label="Take photo"></button>
 
         </div>
 
-        <div class="status" id="status">
+
+        <div class="small-status" id="appStatus">
             Starting camera...
         </div>
 
@@ -344,45 +542,208 @@
 
 </div>
 
+
+<!-- Saved references -->
+
+<div class="modal hidden" id="savedModal">
+
+    <div class="modal-content">
+
+        <div class="modal-header">
+
+            <h2>Saved references</h2>
+
+            <button id="closeSaved">
+                Close
+            </button>
+
+        </div>
+
+        <div class="saved-grid" id="savedGrid"></div>
+
+        <div class="modal-footer">
+
+            <button id="saveCurrentReference">
+                Save current reference
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- Photo comparison -->
+
+<div class="modal hidden" id="comparisonModal">
+
+    <div class="modal-content">
+
+        <div class="modal-header">
+
+            <h2>Photo comparison</h2>
+
+            <button id="closeComparison">
+                Close
+            </button>
+
+        </div>
+
+        <div class="comparison">
+
+            <div>
+
+                <div class="comparison-label">
+                    Inspiration
+                </div>
+
+                <img id="comparisonReference" alt="Reference">
+
+            </div>
+
+            <div>
+
+                <div class="comparison-label">
+                    Captured photo
+                </div>
+
+                <img id="comparisonCaptured" alt="Captured photo">
+
+            </div>
+
+        </div>
+
+        <div class="modal-footer">
+
+            <button id="downloadPhoto">
+                Download photo
+            </button>
+
+            <button id="sharePhoto">
+                Share photo
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<input
+    type="file"
+    id="referencePicker"
+    accept="image/*"
+    class="hidden"
+>
+
+
 <script>
 
-    // --------------------------------
-    // DOM ELEMENTS
-    // --------------------------------
+    // ==========================================
+    // GHOSTFRAME
+    // ==========================================
 
     const video = document.getElementById("camera");
-
-    const cameraArea = document.getElementById("cameraArea");
 
     const reference = document.getElementById("reference");
 
     const overlayLayer = document.getElementById("overlayLayer");
 
-    const photoPicker = document.getElementById("photoPicker");
+    const cameraArea = document.getElementById("cameraArea");
 
-    const opacitySlider = document.getElementById("opacity");
+    const referencePicker = document.getElementById("referencePicker");
 
-    const opacityValue = document.getElementById("opacityValue");
+    const alignmentStatus = document.getElementById("alignmentStatus");
 
-    const timerSelect = document.getElementById("timer");
-
-    const captureButton = document.getElementById("capture");
+    const appStatus = document.getElementById("appStatus");
 
     const countdownElement = document.getElementById("countdown");
 
-    const message = document.getElementById("message");
+    const opacitySlider = document.getElementById("opacity");
 
-    const status = document.getElementById("status");
+    const scaleSlider = document.getElementById("scale");
+
+    const timerSelect = document.getElementById("timer");
 
 
-    // --------------------------------
-    // CAMERA
-    // --------------------------------
-
-    let currentCamera = "user";
+    // ==========================================
+    // STATE
+    // ==========================================
 
     let cameraStream = null;
 
+    let facingMode = "user";
+
+    let currentReferenceURL = null;
+
+    let currentReferenceImage = null;
+
+    let capturedPhotoBlob = null;
+
+    let capturedPhotoURL = null;
+
+    let mirrorReference = false;
+
+    let showGrid = false;
+
+    let overlayX = 0;
+
+    let overlayY = 0;
+
+    let overlayScale = 1;
+
+    let overlayRotation = 0;
+
+    let baseWidth = 0;
+
+    let baseHeight = 0;
+
+    let activePointers = new Map();
+
+    let previousDistance = 0;
+
+    let previousAngle = 0;
+
+    let previousCenter = null;
+
+    let countdownRunning = false;
+
+    let faceMesh = null;
+
+    let referenceFaceMesh = null;
+
+    let referenceLandmarks = null;
+
+    let latestLiveLandmarks = null;
+
+    let faceDetectionBusy = false;
+
+    let lastFaceDetectionTime = 0;
+
+    let lastAlignmentMessage = "";
+
+    let savedReferences = [];
+
+    const FACE_KEYPOINTS = [
+        1,      // Nose tip
+        33,     // Left eye outer corner
+        133,    // Left eye inner corner
+        362,    // Right eye inner corner
+        263,    // Right eye outer corner
+        61,     // Left mouth corner
+        291,    // Right mouth corner
+        152,    // Chin
+        10,     // Forehead
+        234,    // Left cheek
+        454     // Right cheek
+    ];
+
+
+    // ==========================================
+    // CAMERA
+    // ==========================================
 
     async function startCamera() {
 
@@ -401,7 +762,9 @@
 
                 video: {
 
-                    facingMode: currentCamera,
+                    facingMode: {
+                        ideal: facingMode
+                    },
 
                     width: {
                         ideal: 1920
@@ -417,17 +780,21 @@
 
             await video.play();
 
-            status.textContent = "Camera ready";
+            video.classList.toggle(
+                "mirrored",
+                facingMode === "user"
+            );
+
+            appStatus.textContent = "Camera ready";
+
+            updateBaseSize();
 
         } catch (error) {
 
             console.error(error);
 
-            status.textContent =
-                "Camera unavailable. Allow camera access.";
-
-            message.textContent =
-                "Please allow camera access in Safari.";
+            appStatus.textContent =
+                "Camera unavailable. Allow camera permission.";
         }
     }
 
@@ -435,8 +802,8 @@
     document.getElementById("switchCamera")
         .addEventListener("click", async () => {
 
-            currentCamera =
-                currentCamera === "user"
+            facingMode =
+                facingMode === "user"
                     ? "environment"
                     : "user";
 
@@ -444,18 +811,18 @@
         });
 
 
-    // --------------------------------
+    // ==========================================
     // REFERENCE IMAGE
-    // --------------------------------
+    // ==========================================
 
-    document.getElementById("choosePhoto")
+    document.getElementById("chooseReference")
         .addEventListener("click", () => {
 
-            photoPicker.click();
+            referencePicker.click();
         });
 
 
-    photoPicker.addEventListener("change", event => {
+    referencePicker.addEventListener("change", event => {
 
         const file = event.target.files[0];
 
@@ -463,65 +830,116 @@
             return;
         }
 
-        const imageURL = URL.createObjectURL(file);
+        loadReference(file);
 
-        reference.onload = () => {
+        referencePicker.value = "";
+    });
+
+
+    function loadReference(file) {
+
+        if (currentReferenceURL) {
+
+            URL.revokeObjectURL(currentReferenceURL);
+        }
+
+        currentReferenceURL = URL.createObjectURL(file);
+
+        const image = new Image();
+
+        image.onload = async () => {
+
+            currentReferenceImage = image;
+
+            reference.src = currentReferenceURL;
 
             reference.classList.remove("hidden");
 
+            mirrorReference = false;
+
+            document.getElementById("mirrorReference")
+                .classList.remove("active");
+
             resetOverlay();
 
-            message.textContent =
-                "Move and align your reference";
+            updateBaseSize();
+
+            alignmentStatus.textContent =
+                "Detecting reference face...";
+
+            await detectReferenceFace(image);
+
+            updateAlignment();
         };
 
-        reference.src = imageURL;
-    });
+        image.src = currentReferenceURL;
+    }
 
 
-    // --------------------------------
-    // OPACITY
-    // --------------------------------
+    // ==========================================
+    // REFERENCE ASPECT RATIO
+    // ==========================================
 
-    opacitySlider.addEventListener("input", () => {
+    function updateBaseSize() {
 
-        const opacity = opacitySlider.value / 100;
+        if (!currentReferenceImage) {
+            return;
+        }
 
-        reference.style.opacity = opacity;
+        const viewportWidth = cameraArea.clientWidth;
 
-        opacityValue.textContent =
-            opacitySlider.value + "%";
-    });
+        const viewportHeight = cameraArea.clientHeight;
+
+        const imageWidth = currentReferenceImage.naturalWidth;
+
+        const imageHeight = currentReferenceImage.naturalHeight;
+
+        const imageRatio = imageWidth / imageHeight;
+
+        const viewportRatio = viewportWidth / viewportHeight;
+
+        if (imageRatio > viewportRatio) {
+
+            baseWidth = viewportWidth;
+
+            baseHeight = viewportWidth / imageRatio;
+
+        } else {
+
+            baseHeight = viewportHeight;
+
+            baseWidth = viewportHeight * imageRatio;
+        }
+
+        reference.style.width = baseWidth + "px";
+
+        reference.style.height = baseHeight + "px";
+
+        updateOverlay();
+    }
 
 
-    // --------------------------------
+    window.addEventListener(
+        "resize",
+        updateBaseSize
+    );
+
+
+    // ==========================================
     // OVERLAY TRANSFORM
-    // --------------------------------
-
-    let overlayX = 0;
-
-    let overlayY = 0;
-
-    let overlayScale = 1;
-
-    let overlayRotation = 0;
-
-    let activePointers = new Map();
-
-    let previousDistance = 0;
-
-    let previousAngle = 0;
-
-    let previousCenter = null;
-
+    // ==========================================
 
     function updateOverlay() {
+
+        const mirrorValue =
+            mirrorReference ? -1 : 1;
 
         reference.style.transform = `
             translate(
                 calc(-50% + ${overlayX}px),
                 calc(-50% + ${overlayY}px)
             )
+            scaleX(${mirrorValue})
             scale(${overlayScale})
             rotate(${overlayRotation}rad)
         `;
@@ -538,21 +956,82 @@
 
         overlayRotation = 0;
 
+        scaleSlider.value = 100;
+
+        document.getElementById("scaleValue").textContent =
+            "100%";
+
         updateOverlay();
     }
 
 
-    function getDistance(a, b) {
+    document.getElementById("resetOverlay")
+        .addEventListener("click", resetOverlay);
+
+
+    // ==========================================
+    // MIRROR REFERENCE
+    // ==========================================
+
+    document.getElementById("mirrorReference")
+        .addEventListener("click", () => {
+
+            mirrorReference = !mirrorReference;
+
+            document.getElementById("mirrorReference")
+                .classList.toggle("active", mirrorReference);
+
+            updateOverlay();
+
+            updateAlignment();
+        });
+
+
+    // ==========================================
+    // OPACITY
+    // ==========================================
+
+    opacitySlider.addEventListener("input", () => {
+
+        const opacity = opacitySlider.value / 100;
+
+        reference.style.opacity = opacity;
+
+        document.getElementById("opacityValue").textContent =
+            opacitySlider.value + "%";
+    });
+
+
+    // ==========================================
+    // SCALE
+    // ==========================================
+
+    scaleSlider.addEventListener("input", () => {
+
+        overlayScale = Number(scaleSlider.value) / 100;
+
+        document.getElementById("scaleValue").textContent =
+            scaleSlider.value + "%";
+
+        updateOverlay();
+    });
+
+
+    // ==========================================
+    // DRAG / PINCH / ROTATION
+    // ==========================================
+
+    function distance(a, b) {
 
         const dx = a.x - b.x;
 
         const dy = a.y - b.y;
 
-        return Math.sqrt(dx * dx + dy * dy);
+        return Math.hypot(dx, dy);
     }
 
 
-    function getAngle(a, b) {
+    function angle(a, b) {
 
         return Math.atan2(
             b.y - a.y,
@@ -561,7 +1040,7 @@
     }
 
 
-    function getCenter(a, b) {
+    function center(a, b) {
 
         return {
 
@@ -592,19 +1071,23 @@
 
             const points = [...activePointers.values()];
 
-            if (points.length === 2) {
+            if (points.length === 1) {
 
-                previousDistance = getDistance(
+                previousCenter = points[0];
+
+            } else if (points.length === 2) {
+
+                previousDistance = distance(
                     points[0],
                     points[1]
                 );
 
-                previousAngle = getAngle(
+                previousAngle = angle(
                     points[0],
                     points[1]
                 );
 
-                previousCenter = getCenter(
+                previousCenter = center(
                     points[0],
                     points[1]
                 );
@@ -637,36 +1120,30 @@
 
                 const point = points[0];
 
-                if (!previousCenter) {
+                if (previousCenter) {
 
-                    previousCenter = point;
+                    overlayX +=
+                        point.x - previousCenter.x;
 
-                    return;
+                    overlayY +=
+                        point.y - previousCenter.y;
                 }
-
-                overlayX +=
-                    point.x - previousCenter.x;
-
-                overlayY +=
-                    point.y - previousCenter.y;
 
                 previousCenter = point;
 
-                updateOverlay();
-
             } else if (points.length === 2) {
 
-                const distance = getDistance(
+                const newDistance = distance(
                     points[0],
                     points[1]
                 );
 
-                const angle = getAngle(
+                const newAngle = angle(
                     points[0],
                     points[1]
                 );
 
-                const center = getCenter(
+                const newCenter = center(
                     points[0],
                     points[1]
                 );
@@ -674,34 +1151,42 @@
                 if (previousDistance > 0) {
 
                     overlayScale *=
-                        distance / previousDistance;
+                        newDistance / previousDistance;
 
                     overlayScale = Math.max(
                         0.2,
-                        Math.min(5, overlayScale)
+                        Math.min(4, overlayScale)
                     );
                 }
 
                 overlayRotation +=
-                    angle - previousAngle;
+                    newAngle - previousAngle;
 
                 if (previousCenter) {
 
                     overlayX +=
-                        center.x - previousCenter.x;
+                        newCenter.x - previousCenter.x;
 
                     overlayY +=
-                        center.y - previousCenter.y;
+                        newCenter.y - previousCenter.y;
                 }
 
-                previousDistance = distance;
+                previousDistance = newDistance;
 
-                previousAngle = angle;
+                previousAngle = newAngle;
 
-                previousCenter = center;
-
-                updateOverlay();
+                previousCenter = newCenter;
             }
+
+            scaleSlider.value =
+                Math.round(overlayScale * 100);
+
+            document.getElementById("scaleValue").textContent =
+                scaleSlider.value + "%";
+
+            updateOverlay();
+
+            updateAlignment();
         }
     );
 
@@ -713,6 +1198,13 @@
         previousDistance = 0;
 
         previousCenter = null;
+
+        const remaining = [...activePointers.values()];
+
+        if (remaining.length === 1) {
+
+            previousCenter = remaining[0];
+        }
     }
 
 
@@ -727,27 +1219,391 @@
     );
 
 
-    // --------------------------------
-    // CAPTURE PHOTO
-    // --------------------------------
+    // ==========================================
+    // GRID
+    // ==========================================
 
-    captureButton.addEventListener(
-        "click",
-        async () => {
+    document.getElementById("toggleGrid")
+        .addEventListener("click", () => {
 
-            const seconds = Number(
-                timerSelect.value
+            showGrid = !showGrid;
+
+            document.getElementById("guideGrid")
+                .classList.toggle("hidden", !showGrid);
+
+            document.getElementById("toggleGrid")
+                .classList.toggle("active", showGrid);
+        });
+
+
+    // ==========================================
+    // MEDIAPIPE FACE MESH
+    // ==========================================
+
+    async function initializeFaceMesh() {
+
+    if (!window.FaceMesh) {
+
+        alignmentStatus.textContent =
+            "MediaPipe could not load";
+
+        return;
+    }
+
+    const locateFile = (file) => {
+
+        return "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/" + file;
+    };
+
+    // Face detector for the live camera
+    faceMesh = new FaceMesh({
+        locateFile: locateFile
+    });
+
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults(results => {
+
+        if (
+            results.multiFaceLandmarks &&
+            results.multiFaceLandmarks.length > 0
+        ) {
+
+            latestLiveLandmarks =
+                results.multiFaceLandmarks[0];
+
+        } else {
+
+            latestLiveLandmarks = null;
+        }
+
+        updateAlignment();
+    });
+
+
+    // Separate detector for the reference image
+    referenceFaceMesh = new FaceMesh({
+        locateFile: locateFile
+    });
+
+    referenceFaceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    referenceFaceMesh.onResults(results => {
+
+        if (
+            results.multiFaceLandmarks &&
+            results.multiFaceLandmarks.length > 0
+        ) {
+
+            referenceLandmarks =
+                results.multiFaceLandmarks[0];
+
+            updateAlignment();
+
+        } else {
+
+            referenceLandmarks = null;
+
+            setAlignmentMessage(
+                "No face detected in reference"
             );
+        }
+    });
 
-            if (seconds > 0) {
+    detectLiveFace();
+}
 
-                await runCountdown(seconds);
+
+    async function detectLiveFace() {
+
+        if (!faceMesh) {
+            return;
+        }
+
+        if (
+            !video.videoWidth ||
+            !video.videoHeight ||
+            faceDetectionBusy
+        ) {
+
+            requestAnimationFrame(detectLiveFace);
+
+            return;
+        }
+
+        const now = performance.now();
+
+        if (now - lastFaceDetectionTime < 100) {
+
+            requestAnimationFrame(detectLiveFace);
+
+            return;
+        }
+
+        lastFaceDetectionTime = now;
+
+        faceDetectionBusy = true;
+
+        try {
+
+            await faceMesh.send({
+                image: video
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Live face detection error:",
+                error
+            );
+        }
+
+        faceDetectionBusy = false;
+
+        requestAnimationFrame(detectLiveFace);
+    }
+
+
+    // ==========================================
+    // REFERENCE FACE DETECTION
+    // ==========================================
+
+    async function detectReferenceFace(image) {
+
+    if (!referenceFaceMesh) {
+
+        referenceLandmarks = null;
+
+        return;
+    }
+
+    try {
+
+        await referenceFaceMesh.send({
+            image: image
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Reference face detection error:",
+            error
+        );
+
+        referenceLandmarks = null;
+    }
+}
+
+
+    // ==========================================
+    // FACE ALIGNMENT
+    // ==========================================
+
+    function getFaceMetrics(landmarks) {
+
+        const nose = landmarks[1];
+
+        const leftEye = landmarks[33];
+
+        const rightEye = landmarks[263];
+
+        const chin = landmarks[152];
+
+        const forehead = landmarks[10];
+
+        const faceLeft = landmarks[234];
+
+        const faceRight = landmarks[454];
+
+        const eyeCenterX =
+            (leftEye.x + rightEye.x) / 2;
+
+        const eyeCenterY =
+            (leftEye.y + rightEye.y) / 2;
+
+        const eyeDistance = Math.hypot(
+            rightEye.x - leftEye.x,
+            rightEye.y - leftEye.y
+        );
+
+        const faceWidth = Math.abs(
+            faceRight.x - faceLeft.x
+        );
+
+        const faceHeight = Math.abs(
+            chin.y - forehead.y
+        );
+
+        const headTilt = Math.atan2(
+            rightEye.y - leftEye.y,
+            rightEye.x - leftEye.x
+        );
+
+        return {
+
+            centerX: nose.x,
+
+            centerY: nose.y,
+
+            eyeCenterX,
+
+            eyeCenterY,
+
+            eyeDistance,
+
+            faceWidth,
+
+            faceHeight,
+
+            headTilt
+        };
+    }
+
+
+    function updateAlignment() {
+
+        if (
+            !referenceLandmarks ||
+            !latestLiveLandmarks
+        ) {
+
+            if (!latestLiveLandmarks) {
+
+                setAlignmentMessage(
+                    "Move your face into the camera frame"
+                );
+
+            } else {
+
+                setAlignmentMessage(
+                    "Reference face not detected"
+                );
             }
 
-            capturePhoto();
+            return;
         }
-    );
 
+        const referenceMetrics =
+            getFaceMetrics(referenceLandmarks);
+
+        const liveMetrics =
+            getFaceMetrics(latestLiveLandmarks);
+
+
+        // Reference overlay is visually mirrored when enabled.
+        // Adjust the comparison direction accordingly.
+
+        const referenceCenterX =
+            mirrorReference
+                ? 1 - referenceMetrics.centerX
+                : referenceMetrics.centerX;
+
+
+        const referenceTilt =
+            mirrorReference
+                ? -referenceMetrics.headTilt
+                : referenceMetrics.headTilt;
+
+
+        // Face center comparison
+
+        const centerDifferenceX =
+            liveMetrics.centerX - referenceCenterX;
+
+        const centerDifferenceY =
+            liveMetrics.centerY - referenceMetrics.centerY;
+
+
+        // Face size comparison
+
+        const referenceFaceWidth =
+            referenceMetrics.faceWidth;
+
+        const liveFaceWidth =
+            liveMetrics.faceWidth;
+
+
+        // Eye distance comparison
+
+        const eyeDistanceDifference =
+            liveMetrics.eyeDistance
+            - referenceMetrics.eyeDistance;
+
+
+        // Head tilt comparison
+
+        const tiltDifference =
+            liveMetrics.headTilt - referenceTilt;
+
+
+        let feedback = "Face alignment looks good";
+
+
+        if (Math.abs(centerDifferenceX) > 0.06) {
+
+            feedback =
+                centerDifferenceX > 0
+                    ? "Move your face left"
+                    : "Move your face right";
+
+        } else if (
+            Math.abs(centerDifferenceY) > 0.06
+        ) {
+
+            feedback =
+                centerDifferenceY > 0
+                    ? "Move your face up"
+                    : "Move your face down";
+
+        } else if (
+            Math.abs(eyeDistanceDifference) > 0.04
+        ) {
+
+            feedback =
+                eyeDistanceDifference < 0
+                    ? "Move closer to the camera"
+                    : "Move farther from the camera";
+
+        } else if (
+            Math.abs(tiltDifference) > 0.12
+        ) {
+
+            feedback =
+                tiltDifference > 0
+                    ? "Tilt your head slightly"
+                    : "Adjust your head tilt";
+        }
+
+
+        setAlignmentMessage(feedback);
+    }
+
+
+    function setAlignmentMessage(text) {
+
+        if (lastAlignmentMessage === text) {
+            return;
+        }
+
+        lastAlignmentMessage = text;
+
+        alignmentStatus.textContent = text;
+    }
+
+
+    // ==========================================
+    // TIMER
+    // ==========================================
 
     function runCountdown(seconds) {
 
@@ -782,12 +1638,43 @@
     }
 
 
+    // ==========================================
+    // CAPTURE
+    // ==========================================
+
+    document.getElementById("capture")
+        .addEventListener("click", async () => {
+
+            if (countdownRunning) {
+                return;
+            }
+
+            countdownRunning = true;
+
+            const seconds = Number(
+                timerSelect.value
+            );
+
+            if (seconds > 0) {
+
+                await runCountdown(seconds);
+            }
+
+            capturePhoto();
+
+            countdownRunning = false;
+        });
+
+
     function capturePhoto() {
 
-        if (!video.videoWidth || !video.videoHeight) {
+        if (
+            !video.videoWidth ||
+            !video.videoHeight
+        ) {
 
-            status.textContent =
-                "Camera is not ready.";
+            appStatus.textContent =
+                "Camera is not ready";
 
             return;
         }
@@ -800,6 +1687,20 @@
 
         const context = canvas.getContext("2d");
 
+
+        // The overlay is intentionally not included.
+        // Capture the actual camera image only.
+
+        if (facingMode === "user") {
+
+            context.translate(
+                canvas.width,
+                0
+            );
+
+            context.scale(-1, 1);
+        }
+
         context.drawImage(
             video,
             0,
@@ -808,25 +1709,116 @@
             canvas.height
         );
 
-        canvas.toBlob(async blob => {
+
+        canvas.toBlob(blob => {
 
             if (!blob) {
 
-                status.textContent =
-                    "Could not capture photo.";
+                appStatus.textContent =
+                    "Photo capture failed";
 
                 return;
             }
 
+            capturedPhotoBlob = blob;
+
+            if (capturedPhotoURL) {
+
+                URL.revokeObjectURL(
+                    capturedPhotoURL
+                );
+            }
+
+            capturedPhotoURL =
+                URL.createObjectURL(blob);
+
+            showComparison();
+
+        }, "image/jpeg", 0.95);
+    }
+
+
+    // ==========================================
+    // PHOTO COMPARISON
+    // ==========================================
+
+    function showComparison() {
+
+        if (!currentReferenceURL) {
+
+            downloadCapturedPhoto();
+
+            return;
+        }
+
+        document.getElementById(
+            "comparisonReference"
+        ).src = currentReferenceURL;
+
+        document.getElementById(
+            "comparisonCaptured"
+        ).src = capturedPhotoURL;
+
+        document.getElementById(
+            "comparisonModal"
+        ).classList.remove("hidden");
+    }
+
+
+    document.getElementById("closeComparison")
+        .addEventListener("click", () => {
+
+            document.getElementById(
+                "comparisonModal"
+            ).classList.add("hidden");
+        });
+
+
+    document.getElementById("downloadPhoto")
+        .addEventListener("click", downloadCapturedPhoto);
+
+
+    function downloadCapturedPhoto() {
+
+        if (!capturedPhotoBlob) {
+            return;
+        }
+
+        const url = URL.createObjectURL(
+            capturedPhotoBlob
+        );
+
+        const link = document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+            "GhostFrame-" + Date.now() + ".jpg";
+
+        link.click();
+
+        URL.revokeObjectURL(url);
+
+        appStatus.textContent =
+            "Photo downloaded";
+    }
+
+
+    document.getElementById("sharePhoto")
+        .addEventListener("click", async () => {
+
+            if (!capturedPhotoBlob) {
+                return;
+            }
+
             const file = new File(
-                [blob],
-                "GhostFrame-" + Date.now() + ".jpg",
+                [capturedPhotoBlob],
+                "GhostFrame.jpg",
                 {
                     type: "image/jpeg"
                 }
             );
 
-            // Use the iPhone share sheet when available.
             if (
                 navigator.canShare &&
                 navigator.canShare({
@@ -840,69 +1832,244 @@
 
                         files: [file],
 
-                        title: "GhostFrame Photo"
+                        title: "GhostFrame"
                     });
-
-                    status.textContent =
-                        "Photo ready to save.";
 
                 } catch (error) {
 
-                    if (error.name !== "AbortError") {
-
-                        downloadPhoto(blob);
-                    }
+                    console.log(error);
                 }
 
             } else {
 
-                downloadPhoto(blob);
+                downloadCapturedPhoto();
+            }
+        });
+
+
+    // ==========================================
+    // SAVED REFERENCES
+    // ==========================================
+
+    function loadSavedReferences() {
+
+        try {
+
+            savedReferences = JSON.parse(
+                localStorage.getItem(
+                    "ghostframeReferences"
+                ) || "[]"
+            );
+
+        } catch {
+
+            savedReferences = [];
+        }
+    }
+
+
+    function saveReferencesToStorage() {
+
+        try {
+
+            localStorage.setItem(
+                "ghostframeReferences",
+                JSON.stringify(savedReferences)
+            );
+
+        } catch (error) {
+
+            appStatus.textContent =
+                "Storage full. Remove some saved references.";
+
+            console.error(error);
+        }
+    }
+
+
+    document.getElementById("savedButton")
+        .addEventListener("click", () => {
+
+            renderSavedReferences();
+
+            document.getElementById(
+                "savedModal"
+            ).classList.remove("hidden");
+        });
+
+
+    document.getElementById("closeSaved")
+        .addEventListener("click", () => {
+
+            document.getElementById(
+                "savedModal"
+            ).classList.add("hidden");
+        });
+
+
+    document.getElementById("saveCurrentReference")
+        .addEventListener("click", async () => {
+
+            if (!currentReferenceImage) {
+
+                appStatus.textContent =
+                    "Choose a reference first";
+
+                return;
             }
 
-        }, "image/jpeg", 0.95);
+            const canvas = document.createElement("canvas");
+
+            canvas.width =
+                currentReferenceImage.naturalWidth;
+
+            canvas.height =
+                currentReferenceImage.naturalHeight;
+
+            const context = canvas.getContext("2d");
+
+            context.drawImage(
+                currentReferenceImage,
+                0,
+                0
+            );
+
+            const imageData =
+                canvas.toDataURL("image/jpeg", 0.85);
+
+            savedReferences.unshift({
+
+                id: Date.now(),
+
+                image: imageData
+            });
+
+            savedReferences =
+                savedReferences.slice(0, 20);
+
+            saveReferencesToStorage();
+
+            renderSavedReferences();
+
+            appStatus.textContent =
+                "Reference saved";
+        });
+
+
+    function renderSavedReferences() {
+
+        const grid = document.getElementById(
+            "savedGrid"
+        );
+
+        grid.innerHTML = "";
+
+        savedReferences.forEach(item => {
+
+            const container =
+                document.createElement("div");
+
+            container.className = "saved-item";
+
+            const image =
+                document.createElement("img");
+
+            image.src = item.image;
+
+            const button =
+                document.createElement("button");
+
+            button.textContent = "Use";
+
+            button.addEventListener("click", () => {
+
+                const imageFile = dataURLToFile(
+                    item.image,
+                    "saved-reference.jpg"
+                );
+
+                loadReference(imageFile);
+
+                document.getElementById(
+                    "savedModal"
+                ).classList.add("hidden");
+            });
+
+            container.appendChild(image);
+
+            container.appendChild(button);
+
+            grid.appendChild(container);
+        });
     }
 
 
-    function downloadPhoto(blob) {
+    function dataURLToFile(dataURL, filename) {
 
-        const url = URL.createObjectURL(blob);
+        const parts = dataURL.split(",");
 
-        const link = document.createElement("a");
+        const mime = parts[0].match(
+            /:(.*?);/
+        )[1];
 
-        link.href = url;
+        const binary = atob(parts[1]);
 
-        link.download =
-            "GhostFrame-" + Date.now() + ".jpg";
+        const array = new Uint8Array(
+            binary.length
+        );
 
-        document.body.appendChild(link);
+        for (
+            let i = 0;
+            i < binary.length;
+            i++
+        ) {
 
-        link.click();
+            array[i] = binary.charCodeAt(i);
+        }
 
-        link.remove();
-
-        status.textContent =
-            "Photo downloaded.";
+        return new File(
+            [array],
+            filename,
+            {
+                type: mime
+            }
+        );
     }
 
 
-    // --------------------------------
+    // ==========================================
     // INITIALIZE
-    // --------------------------------
+    // ==========================================
 
-    if (
-        navigator.mediaDevices &&
-        navigator.mediaDevices.getUserMedia
-    ) {
+    loadSavedReferences();
 
-        startCamera();
+    startCamera();
 
-    } else {
+    initializeFaceMesh();
 
-        status.textContent =
-            "Camera requires HTTPS or localhost.";
+
+    // ==========================================
+    // PWA SERVICE WORKER
+    // ==========================================
+
+    if ("serviceWorker" in navigator) {
+
+        window.addEventListener("load", () => {
+
+            navigator.serviceWorker.register(
+                "./sw.js"
+            ).catch(error => {
+
+                console.error(
+                    "Service worker registration failed:",
+                    error
+                );
+            });
+        });
     }
 
 </script>
 
 </body>
+
 </html>
