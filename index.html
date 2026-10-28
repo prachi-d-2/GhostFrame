@@ -1,0 +1,908 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
+
+    <meta name="theme-color" content="#101010">
+
+    <title>GhostFrame</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #101010;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont,
+                "Segoe UI", sans-serif;
+            overflow: hidden;
+        }
+
+        .app {
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #101010;
+        }
+
+        header h1 {
+            font-size: 20px;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        button {
+            border: none;
+            color: white;
+            background: #292929;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        .camera-area {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            background: #000;
+            touch-action: none;
+        }
+
+        #camera {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            inset: 0;
+        }
+
+        #reference {
+            position: absolute;
+
+            left: 50%;
+            top: 50%;
+
+            max-width: 100%;
+            max-height: 100%;
+
+            width: auto;
+            height: auto;
+
+            object-fit: contain;
+
+            opacity: 0.45;
+
+            pointer-events: none;
+            user-select: none;
+
+            transform-origin: center;
+        }
+
+        .overlay-layer {
+            position: absolute;
+            inset: 0;
+            touch-action: none;
+        }
+
+        .alignment-guide {
+            position: absolute;
+            width: 70%;
+            height: 65%;
+            border: 1px dashed rgba(255,255,255,0.25);
+            border-radius: 50%;
+            left: 15%;
+            top: 17%;
+            pointer-events: none;
+        }
+
+        .message {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.65);
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .countdown {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            font-weight: bold;
+            text-shadow: 0 0 20px black;
+            pointer-events: none;
+        }
+
+        .controls {
+            padding: 16px;
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            background: #101010;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .slider-row label {
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: white;
+        }
+
+        .timer-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        select {
+            background: #292929;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .capture-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .capture-button {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: white;
+            border: 5px solid #999;
+            padding: 0;
+            box-shadow: 0 0 0 4px white;
+        }
+
+        .capture-button:active {
+            transform: scale(0.92);
+        }
+
+        .status {
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 16px;
+            min-height: 16px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #photoPicker {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <header>
+
+        <h1>GhostFrame</h1>
+
+        <div>
+            <button id="choosePhoto">
+                Reference
+            </button>
+
+            <input
+                type="file"
+                id="photoPicker"
+                accept="image/*"
+            >
+
+            <button id="switchCamera">
+                Flip
+            </button>
+        </div>
+
+    </header>
+
+    <main class="camera-area" id="cameraArea">
+
+        <video
+            id="camera"
+            autoplay
+            muted
+            playsinline
+        ></video>
+
+        <div class="overlay-layer" id="overlayLayer">
+
+            <img
+                id="reference"
+                class="hidden"
+                alt="Reference image"
+            >
+
+        </div>
+
+        <div class="alignment-guide"></div>
+
+        <div class="countdown" id="countdown">
+            3
+        </div>
+
+        <div class="message" id="message">
+            Choose an inspiration photo
+        </div>
+
+    </main>
+
+    <section class="controls">
+
+        <div class="slider-row">
+
+            <label for="opacity">
+                Opacity
+            </label>
+
+            <input
+                type="range"
+                id="opacity"
+                min="0"
+                max="100"
+                value="45"
+            >
+
+            <span id="opacityValue">
+                45%
+            </span>
+
+        </div>
+
+        <div class="timer-row">
+
+            <label for="timer">
+                Timer
+            </label>
+
+            <select id="timer">
+
+                <option value="0">
+                    Off
+                </option>
+
+                <option value="3">
+                    3 seconds
+                </option>
+
+                <option value="5">
+                    5 seconds
+                </option>
+
+                <option value="10">
+                    10 seconds
+                </option>
+
+            </select>
+
+        </div>
+
+        <div class="capture-row">
+
+            <button
+                class="capture-button"
+                id="capture"
+                aria-label="Capture photo"
+            ></button>
+
+        </div>
+
+        <div class="status" id="status">
+            Starting camera...
+        </div>
+
+    </section>
+
+</div>
+
+<script>
+
+    // --------------------------------
+    // DOM ELEMENTS
+    // --------------------------------
+
+    const video = document.getElementById("camera");
+
+    const cameraArea = document.getElementById("cameraArea");
+
+    const reference = document.getElementById("reference");
+
+    const overlayLayer = document.getElementById("overlayLayer");
+
+    const photoPicker = document.getElementById("photoPicker");
+
+    const opacitySlider = document.getElementById("opacity");
+
+    const opacityValue = document.getElementById("opacityValue");
+
+    const timerSelect = document.getElementById("timer");
+
+    const captureButton = document.getElementById("capture");
+
+    const countdownElement = document.getElementById("countdown");
+
+    const message = document.getElementById("message");
+
+    const status = document.getElementById("status");
+
+
+    // --------------------------------
+    // CAMERA
+    // --------------------------------
+
+    let currentCamera = "user";
+
+    let cameraStream = null;
+
+
+    async function startCamera() {
+
+        try {
+
+            if (cameraStream) {
+
+                cameraStream.getTracks().forEach(track => {
+                    track.stop();
+                });
+            }
+
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+
+                audio: false,
+
+                video: {
+
+                    facingMode: currentCamera,
+
+                    width: {
+                        ideal: 1920
+                    },
+
+                    height: {
+                        ideal: 1080
+                    }
+                }
+            });
+
+            video.srcObject = cameraStream;
+
+            await video.play();
+
+            status.textContent = "Camera ready";
+
+        } catch (error) {
+
+            console.error(error);
+
+            status.textContent =
+                "Camera unavailable. Allow camera access.";
+
+            message.textContent =
+                "Please allow camera access in Safari.";
+        }
+    }
+
+
+    document.getElementById("switchCamera")
+        .addEventListener("click", async () => {
+
+            currentCamera =
+                currentCamera === "user"
+                    ? "environment"
+                    : "user";
+
+            await startCamera();
+        });
+
+
+    // --------------------------------
+    // REFERENCE IMAGE
+    // --------------------------------
+
+    document.getElementById("choosePhoto")
+        .addEventListener("click", () => {
+
+            photoPicker.click();
+        });
+
+
+    photoPicker.addEventListener("change", event => {
+
+        const file = event.target.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        const imageURL = URL.createObjectURL(file);
+
+        reference.onload = () => {
+
+            reference.classList.remove("hidden");
+
+            resetOverlay();
+
+            message.textContent =
+                "Move and align your reference";
+        };
+
+        reference.src = imageURL;
+    });
+
+
+    // --------------------------------
+    // OPACITY
+    // --------------------------------
+
+    opacitySlider.addEventListener("input", () => {
+
+        const opacity = opacitySlider.value / 100;
+
+        reference.style.opacity = opacity;
+
+        opacityValue.textContent =
+            opacitySlider.value + "%";
+    });
+
+
+    // --------------------------------
+    // OVERLAY TRANSFORM
+    // --------------------------------
+
+    let overlayX = 0;
+
+    let overlayY = 0;
+
+    let overlayScale = 1;
+
+    let overlayRotation = 0;
+
+    let activePointers = new Map();
+
+    let previousDistance = 0;
+
+    let previousAngle = 0;
+
+    let previousCenter = null;
+
+
+    function updateOverlay() {
+
+        reference.style.transform = `
+            translate(
+                calc(-50% + ${overlayX}px),
+                calc(-50% + ${overlayY}px)
+            )
+            scale(${overlayScale})
+            rotate(${overlayRotation}rad)
+        `;
+    }
+
+
+    function resetOverlay() {
+
+        overlayX = 0;
+
+        overlayY = 0;
+
+        overlayScale = 1;
+
+        overlayRotation = 0;
+
+        updateOverlay();
+    }
+
+
+    function getDistance(a, b) {
+
+        const dx = a.x - b.x;
+
+        const dy = a.y - b.y;
+
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+
+    function getAngle(a, b) {
+
+        return Math.atan2(
+            b.y - a.y,
+            b.x - a.x
+        );
+    }
+
+
+    function getCenter(a, b) {
+
+        return {
+
+            x: (a.x + b.x) / 2,
+
+            y: (a.y + b.y) / 2
+        };
+    }
+
+
+    overlayLayer.addEventListener(
+        "pointerdown",
+        event => {
+
+            event.preventDefault();
+
+            overlayLayer.setPointerCapture(
+                event.pointerId
+            );
+
+            activePointers.set(
+                event.pointerId,
+                {
+                    x: event.clientX,
+                    y: event.clientY
+                }
+            );
+
+            const points = [...activePointers.values()];
+
+            if (points.length === 2) {
+
+                previousDistance = getDistance(
+                    points[0],
+                    points[1]
+                );
+
+                previousAngle = getAngle(
+                    points[0],
+                    points[1]
+                );
+
+                previousCenter = getCenter(
+                    points[0],
+                    points[1]
+                );
+            }
+        }
+    );
+
+
+    overlayLayer.addEventListener(
+        "pointermove",
+        event => {
+
+            if (!activePointers.has(event.pointerId)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            activePointers.set(
+                event.pointerId,
+                {
+                    x: event.clientX,
+                    y: event.clientY
+                }
+            );
+
+            const points = [...activePointers.values()];
+
+            if (points.length === 1) {
+
+                const point = points[0];
+
+                if (!previousCenter) {
+
+                    previousCenter = point;
+
+                    return;
+                }
+
+                overlayX +=
+                    point.x - previousCenter.x;
+
+                overlayY +=
+                    point.y - previousCenter.y;
+
+                previousCenter = point;
+
+                updateOverlay();
+
+            } else if (points.length === 2) {
+
+                const distance = getDistance(
+                    points[0],
+                    points[1]
+                );
+
+                const angle = getAngle(
+                    points[0],
+                    points[1]
+                );
+
+                const center = getCenter(
+                    points[0],
+                    points[1]
+                );
+
+                if (previousDistance > 0) {
+
+                    overlayScale *=
+                        distance / previousDistance;
+
+                    overlayScale = Math.max(
+                        0.2,
+                        Math.min(5, overlayScale)
+                    );
+                }
+
+                overlayRotation +=
+                    angle - previousAngle;
+
+                if (previousCenter) {
+
+                    overlayX +=
+                        center.x - previousCenter.x;
+
+                    overlayY +=
+                        center.y - previousCenter.y;
+                }
+
+                previousDistance = distance;
+
+                previousAngle = angle;
+
+                previousCenter = center;
+
+                updateOverlay();
+            }
+        }
+    );
+
+
+    function endPointer(event) {
+
+        activePointers.delete(event.pointerId);
+
+        previousDistance = 0;
+
+        previousCenter = null;
+    }
+
+
+    overlayLayer.addEventListener(
+        "pointerup",
+        endPointer
+    );
+
+    overlayLayer.addEventListener(
+        "pointercancel",
+        endPointer
+    );
+
+
+    // --------------------------------
+    // CAPTURE PHOTO
+    // --------------------------------
+
+    captureButton.addEventListener(
+        "click",
+        async () => {
+
+            const seconds = Number(
+                timerSelect.value
+            );
+
+            if (seconds > 0) {
+
+                await runCountdown(seconds);
+            }
+
+            capturePhoto();
+        }
+    );
+
+
+    function runCountdown(seconds) {
+
+        return new Promise(resolve => {
+
+            let remaining = seconds;
+
+            countdownElement.style.display = "flex";
+
+            countdownElement.textContent = remaining;
+
+            const interval = setInterval(() => {
+
+                remaining--;
+
+                if (remaining <= 0) {
+
+                    clearInterval(interval);
+
+                    countdownElement.style.display = "none";
+
+                    resolve();
+
+                } else {
+
+                    countdownElement.textContent =
+                        remaining;
+                }
+
+            }, 1000);
+        });
+    }
+
+
+    function capturePhoto() {
+
+        if (!video.videoWidth || !video.videoHeight) {
+
+            status.textContent =
+                "Camera is not ready.";
+
+            return;
+        }
+
+        const canvas = document.createElement("canvas");
+
+        canvas.width = video.videoWidth;
+
+        canvas.height = video.videoHeight;
+
+        const context = canvas.getContext("2d");
+
+        context.drawImage(
+            video,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        canvas.toBlob(async blob => {
+
+            if (!blob) {
+
+                status.textContent =
+                    "Could not capture photo.";
+
+                return;
+            }
+
+            const file = new File(
+                [blob],
+                "GhostFrame-" + Date.now() + ".jpg",
+                {
+                    type: "image/jpeg"
+                }
+            );
+
+            // Use the iPhone share sheet when available.
+            if (
+                navigator.canShare &&
+                navigator.canShare({
+                    files: [file]
+                })
+            ) {
+
+                try {
+
+                    await navigator.share({
+
+                        files: [file],
+
+                        title: "GhostFrame Photo"
+                    });
+
+                    status.textContent =
+                        "Photo ready to save.";
+
+                } catch (error) {
+
+                    if (error.name !== "AbortError") {
+
+                        downloadPhoto(blob);
+                    }
+                }
+
+            } else {
+
+                downloadPhoto(blob);
+            }
+
+        }, "image/jpeg", 0.95);
+    }
+
+
+    function downloadPhoto(blob) {
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+            "GhostFrame-" + Date.now() + ".jpg";
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+
+        status.textContent =
+            "Photo downloaded.";
+    }
+
+
+    // --------------------------------
+    // INITIALIZE
+    // --------------------------------
+
+    if (
+        navigator.mediaDevices &&
+        navigator.mediaDevices.getUserMedia
+    ) {
+
+        startCamera();
+
+    } else {
+
+        status.textContent =
+            "Camera requires HTTPS or localhost.";
+    }
+
+</script>
+
+</body>
+</html>
