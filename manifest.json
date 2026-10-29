@@ -1,7 +1,8 @@
+
 {
     "name": "GhostFrame",
     "short_name": "GhostFrame",
-    "description": "Recreate inspiration photos using a live camera overlay.",
+    "description": "Recreate inspiration photos using a live camera reference overlay.",
     "start_url": "./",
     "scope": "./",
     "display": "standalone",
@@ -12,7 +13,7 @@
         {
             "src": "./icon.jpg",
             "sizes": "512x512",
-            "type": "image/jpg"
+            "type": "image/jpeg"
         }
     ]
 }
